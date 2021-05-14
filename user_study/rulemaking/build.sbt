@@ -2,10 +2,14 @@ name := "nsf_rules"
 organization := "org.clulab"
 crossScalaVersions := Seq("2.11.12", "2.12.8")
 
+val odinsonVer = "0.3.2-SNAPSHOT"
+
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest"      % "3.0.5"               % "test",
-  "ai.lum"        %% "odinson"     % "0.3.1",
-  "ai.lum"        %% "regextools"     % "0.1.0-SNAPSHOT",
+  "org.scalatest" %% "scalatest"            % "3.0.5"       % "test",
+  "ai.lum"        %% "common"               % "0.1.6-SNAPSHOT",
+  "ai.lum"        %% "odinson-core"         % odinsonVer,
+  /* "ai.lum"        %% "odinson-extra"        % odinsonVer, */
+  "ai.lum"        %% "regextools"           % "0.1.0-SNAPSHOT",
 
 )
 

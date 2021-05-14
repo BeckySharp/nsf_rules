@@ -7,6 +7,7 @@ import random
 import json
 import os, sys
 
+# random.seed(426)
 
 class Rule():
     def __init__(self, steps, directions, edge_labels, node_attributes):
@@ -45,8 +46,8 @@ class LabeledGraph():
     - edges: List of (u, v) tuples from mk labled graph
     - label: String, the label on all edges contained in this object/subgraph
     '''
-    def __init__(self, edges, label):
-        self.graph = nx.DiGraph()
+    def __init__(self, edges, label, num_nodes):
+        self.graph = nx.empty_graph(num_nodes, nx.DiGraph())
         self.graph.add_edges_from(edges)
         self.matrix = nx.to_numpy_matrix(self.graph).astype(np.int32)
         self.transpose = self.matrix.transpose()
@@ -62,6 +63,10 @@ class LabeledGraph():
                 return self.transpose[node]
         return np.empty(0)
 
+    def dump(self, fn):
+        with open(fn, 'w') as fout:
+            json.dump({'edges': self.edges, 'label': self.label}, fout)
+
 
 # Make a LabeledGraph instance.
 # Options:
@@ -70,17 +75,18 @@ class LabeledGraph():
 #      need to be connected to each other
 # TODO: I think we should start with the second option...!
 
-def mk_labeled_graph(source_graph, label, num_steps):
+def mk_labeled_graph(source_graph, label, num_steps, num_nodes):
+
     A = nx.to_numpy_matrix(source_graph)
     edges = []
     step = 0
     while step < num_steps:
-        start = random.randint(0, len(A))
-        end = random.randint(0, A.shape[1])
+        start = random.randint(0, len(A)-1)
+        end = random.randint(0, A.shape[1]-1)
         x = (start, end)
         edges.append(x)
         step += 1
-    return LabeledGraph(edges, label)# row of object 
+    return LabeledGraph(edges, label, num_nodes)# row of object
 
 # Make a random walk over the collection of LabeledGraphs
 #   1. choose starting position
@@ -106,7 +112,8 @@ def random_walk_over_labeled_edges(subgraphs_for_edge_types, num_steps, source_g
         if len(available_subgraphs) == 0:
             break
         selected_subgraph = choose_subgraph(available_subgraphs)
-        edge_labels.append(selected_subgraph.label)  # a labeled instance  
+        edge_labels.append(selected_subgraph.label)  # the label chosen for traversal
+        # possible transitions for this label and direction
         row = selected_subgraph.get_row(curr, direction)
         next_node = choose_from_row(row) # poss next check ??
         if next_node == None: # 0.0 ? 
@@ -127,7 +134,7 @@ def random_walk_over_labeled_edges(subgraphs_for_edge_types, num_steps, source_g
 
 def choose_start(source_graph): # no parameter we need the matrix/ the length of the list of edged tuples ? 
     A = nx.to_numpy_matrix(source_graph) # Just have the one function of the matrix of source graph ? 
-    return random.randint(0, len(A))
+    return random.randint(0, len(A)-1)
 
 # randomly choose a direction (incoming vs outgoing)
 def choose_direction():
@@ -135,7 +142,7 @@ def choose_direction():
 
 def choose_attribute():
     # weights, to choose name more often
-    return random.choice(["NAME"]*6 + ["COLOR"]*4)
+    return random.choice(["NAME"]*4 + ["COLOR"]*6)
    
 
 # return the graphs that have available transitions for that node and direction
@@ -149,7 +156,7 @@ def check_subgraphs(subgraphs_for_edge_types, node, direction): #?
     poss_edge_types = []
     for i, Labeledgraphinstance in  enumerate(subgraphs_for_edge_types):
         if 1.0 in Labeledgraphinstance.get_row(node, direction):
-            poss_edge_types.append(subgraphs_for_edge_types[i]) # i or labeled graph instance ? mistake ???
+            poss_edge_types.append(subgraphs_for_edge_types[i])
     return poss_edge_types
 
 
@@ -177,18 +184,18 @@ def random_between(min, max):
     return random.randint(min, max)
 
 
-def save(outdir, id, stimuli_list): # NEED HELP ON
+def save(outdir, stimuli_list): # NEED HELP ON
     '''
     stimuli_list save as a json lines text file
     '''
-    with open(os.path.join(outdir, f'stimuli_{id}.jsonl'), 'w') as file:
+    with open(os.path.join(outdir, f'stimuli.jsonl'), 'w') as file:
         for i in stimuli_list:
             # dump each individual stimulus as its own json object,
             # one per line
             json.dump(i.__dict__, file)
             file.write("\n")
 
-def visualize(outdir, id, subgraph_list, node_vocabulary):
+def visualize(outdir, subgraph_list, node_vocabulary):
     '''
     Save a png of the overall graph against which the user will try to match the rule/pattern
     '''
@@ -214,7 +221,7 @@ def visualize(outdir, id, subgraph_list, node_vocabulary):
             merged.add_edge(u,v, label = label)
     p = nx.drawing.nx_pydot.to_pydot(merged) # The same or a new file each time ?
 
-    outfile = os.path.join(outdir, f"full_graph_{id}.png")
+    outfile = os.path.join(outdir, f"full_graph.png")
     p.write_png(outfile)
     Image(filename=outfile)
 
@@ -230,16 +237,13 @@ def main():
 
 
     # -- Vocabularies --
-    num_nodes = 8
+    num_nodes = 7
     node_vocab = Vocabulary(os.path.join(wdir, "node_vocabulary.txt"))
-    node_indices = list(range(node_vocab.size))
-    np.random.shuffle(node_indices)
-    node_sample = node_indices[:num_nodes]
 
-    num_edges = 6
+    num_edges = 3
     edge_vocab = Vocabulary(os.path.join(wdir, "edge_vocabulary.txt"))
     edge_indices = list(range(edge_vocab.size))
-    np.random.shuffle(edge_indices)
+    random.shuffle(edge_indices)
     edge_sample = edge_indices[:num_edges]
 
 
@@ -250,28 +254,28 @@ def main():
     # for each of the edge labels.  The resulting subgraphs, together,
     # when **visualized** will be the GRAPH shown at the top of a page
     # in the survey.
-    min_steps_for_subgraph = 3
-    max_steps_for_subgraph = 10
+    min_steps_for_subgraph = 1
+    max_steps_for_subgraph = 4
 
     # These are for controlling how long the actual rule is for the stimuli_rules.
-    min_stimuli_walk_length = 4
-    max_stimuli_walk_length = 10
+    min_stimuli_walk_length = 2
+    max_stimuli_walk_length = 6
 
     # ----------------------------------
     # Step 1: generate a graph from which we will get the subgraphs
     # ----------------------------------
 
-    source_graph = nx.complete_graph(num_nodes)
+    source_graph = nx.complete_graph(num_nodes, nx.DiGraph())
 
     # ----------------------------------
     #  Step 2: for each edge label in the vocabulary, make a LabeledGraph
     # ----------------------------------
 
     subgraphs_for_edge_types = []
-    for i, edge_label_idx in enumerate(edge_indices):
+    for i, edge_label_idx in enumerate(edge_sample):
         label = edge_vocab.idx2label[edge_label_idx]
         num_steps = random_between(min_steps_for_subgraph, max_steps_for_subgraph)
-        subgraph = mk_labeled_graph(source_graph, label, num_steps) # a LabledGraph instance
+        subgraph = mk_labeled_graph(source_graph, label, num_steps, num_nodes) # a LabledGraph instance
         subgraphs_for_edge_types.append(subgraph) # list of labeled graphs instances  
     # ----------------------------------
     # Step 3: for 1..N (num stimuli rules), generate and store random walks
@@ -291,15 +295,26 @@ def main():
     # fixme, make a loop
     id = 1
 
+    packagedir = os.path.join(outdir, f"package_{id}")
+    if not os.path.exists(packagedir):
+        os.makedirs(packagedir)
+
     # save and/or visualize stimuli_rules
-    save(outdir, id, stimuli_rules)
+    save(packagedir, stimuli_rules)
     # todo: export rules in format we can calulate coverage of the factors of interest
 
     # visualize the full "graph" with the labeled edges, will be at the top of the
     # page in the survey
-    visualize(outdir, id, subgraphs_for_edge_types, node_vocab)
+    visualize(packagedir, subgraphs_for_edge_types, node_vocab)
 
     # todo: export full graph in format we can calulate coverage of the factors of interest
+    graphdir = os.path.join(packagedir, "graph")
+    if not os.path.exists(graphdir):
+        os.makedirs(graphdir)
+    for i, labeled_graph in enumerate(subgraphs_for_edge_types):
+        outfile = os.path.join(graphdir, f'labeled_graph_{i}.json')
+        labeled_graph.dump(outfile)
+
 
 
 
