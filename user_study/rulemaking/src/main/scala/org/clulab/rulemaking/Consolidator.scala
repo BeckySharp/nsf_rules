@@ -146,12 +146,13 @@ class Consolidator(nodeVocabulary: File, stimuliFile: File) {
     if (traversal.isInstanceOf[Constraint]) return traversal
 
     // flip a coin
-    val flip = random.nextInt(7)
+    val flip = random.nextInt(8)
     flip match {
       case x if x < 4 => traversal // do nothing
       case 4 => KleeneStar(traversal)
       case 5 => KleenePlus(traversal)
       case 6 => Optional(traversal)
+      case 7 => Optional(traversal)
       case _ => ???
     }
   }

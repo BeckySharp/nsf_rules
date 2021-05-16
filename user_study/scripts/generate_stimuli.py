@@ -237,10 +237,10 @@ def main():
 
 
     # -- Vocabularies --
-    num_nodes = 7
+    num_nodes = 12
     node_vocab = Vocabulary(os.path.join(wdir, "node_vocabulary.txt"))
 
-    num_edges = 3
+    num_edges = 4
     edge_vocab = Vocabulary(os.path.join(wdir, "edge_vocabulary.txt"))
     edge_indices = list(range(edge_vocab.size))
     random.shuffle(edge_indices)
@@ -259,7 +259,7 @@ def main():
 
     # These are for controlling how long the actual rule is for the stimuli_rules.
     min_stimuli_walk_length = 2
-    max_stimuli_walk_length = 6
+    max_stimuli_walk_length = 5
 
     # ----------------------------------
     # Step 1: generate a graph from which we will get the subgraphs
