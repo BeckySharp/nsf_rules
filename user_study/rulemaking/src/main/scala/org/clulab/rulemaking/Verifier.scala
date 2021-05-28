@@ -17,7 +17,7 @@ class Verifier(config: Config, nodeVocabulary: File, packageDir: File) {
   val graph: Document = loadGraph(packageDir)
   // index the document for the EE
   val ee: ExtractorEngine = ExtractorEngine.inMemory(config, Seq(graph))
-  val availableNodes: Array[String] = ee.getTokensForSpan(0, 0, graph.sentences.head.numTokens)
+  val availableNodes: Array[String] = ee.dataGatherer.getTokensForSpan(0, 0, graph.sentences.head.numTokens)
 
   // verify that a pattern matches
   def isVerified(pattern: String): Boolean = {
@@ -35,11 +35,11 @@ class Verifier(config: Config, nodeVocabulary: File, packageDir: File) {
         |   pattern: |
         |     ${pattern}
         |""".stripMargin
-    ee.extractMentions(ee.compileRuleString(rules)).toArray
+    ee.extractAndPopulate(ee.compileRuleString(rules)).toArray
   }
 
   def getNames(ms: Array[Mention]): Array[String] = {
-    ms.map(m => ee.getTokensForSpan(m).mkString(" ")).distinct
+    ms.map(m => m.text).distinct
   }
 
   // does the pattern match other things?
